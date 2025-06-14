@@ -1,0 +1,221 @@
+---
+title: "Refined_viz"
+output: html_document
+---
+
+## Loading Packages
+```{r}
+#| label: load packages
+#| warning: false
+#| message: false
+
+library(tidyverse)
+library(tidymodels)
+library(knitr)
+library(pROC)
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+library(plotly)
+```
+
+## Loading Data
+```{r}
+#| message: false
+#| label: load-data
+
+Harvest <- read_csv("/Users/lauren/Desktop/agroecology/raw_data/Harvest2024.csv")
+```
+
+## Cleaning Data
+```{r}
+Harvest_clean <- Harvest[Harvest[[1]] != "TOTAL", ]
+
+Harvest_clean <- Harvest |>
+  select(-Notes) |> #removes Notes column
+  na.omit() |> #gets rid of NA values
+  rename(lbs = `Quantity (lb)`) |> #renames Quantity Variable
+  mutate(
+    Vegetable = tolower(Vegetable), #lowercase all vegetable names
+    Vegetable = ifelse(Vegetable == "tumeric", "turmeric", Vegetable), #fixes turmeric misspelling
+    Cost = as.numeric(gsub("\\$", "", Cost)) #removing dollar sign
+  ) |>
+  mutate(
+    Date = as.Date(Date, format = "%m/%d/%Y"), #changing variable type of date variable
+    Bimonthly = case_when(
+      day(Date) <= 15 ~ paste("Early", month(Date, label = TRUE, abbr = TRUE)),
+      day(Date) > 15  ~ paste("Late", month(Date, label = TRUE, abbr = TRUE))
+    ), #creates the bimonthly variable to be formatted as 'Early/Late' + 'Month Abbreviation'
+    Bimonthly = factor(Bimonthly, levels = c(
+      "Early Jan", "Late Jan",
+      "Early Feb", "Late Feb",
+      "Early Mar", "Late Mar",
+      "Early Apr", "Late Apr",
+      "Early May", "Late May",
+      "Early Jun", "Late Jun",
+      "Early Jul", "Late Jul",
+      "Early Aug", "Late Aug",
+      "Early Sep", "Late Sep",
+      "Early Oct", "Late Oct",
+      "Early Nov", "Late Nov",
+      "Early Dec", "Late Dec"
+    )) #this is necessary to order xaxis by calendar year rather than alphabetically
+  ) |>
+  group_by(Bimonthly, Vegetable) |>
+  mutate(Bimonthly_Cost = sum(Cost, na.rm = TRUE)) |>
+  ungroup() |>
+  mutate(
+    weightclass = ifelse(Vegetable == "watermelon", 'watermelon',
+                         ifelse(lbs < 10, '< 10',
+                         ifelse(lbs >= 10 & lbs < 50, '10 ≤ 50', '> 50')))
+  ) |> #creating weight class in main data frame
+  mutate(family = case_when(
+    Vegetable %in% c('bok choy', 'collards', 'kale', 'napa cabbage', 'radish', 'mustards') ~ 'Brassicaceae',
+    Vegetable %in% c('beets', 'chard', 'swiss chard', 'spinach') ~ 'Amaranthaceae',
+    Vegetable %in% c('carrots', 'dill', 'parsley') ~ 'Apiaceae',
+    Vegetable == 'lettuce' ~ 'Asteraceae',
+    Vegetable == 'snap peas' ~ 'Fabaceae',
+    Vegetable %in% c('chives', 'onions') ~ 'Alliaceae',
+    Vegetable %in% c('cucumbers', 'pumpkins', 'squash', 'watermelon', 'zucchini') ~ 'Cucurbitaceae',
+    Vegetable %in% c('cherry tomatoes', 'eggplant', 'peppers', 'tomatoes') ~ 'Solanaceae',
+    Vegetable %in% c('basil', 'lemon balm', 'mint') ~ 'Lamiaceae',
+    Vegetable %in% c('ginger', 'turmeric') ~ 'Zingiberaceae',
+    Vegetable %in% c('okra', 'roselle') ~ 'Malvaceae',
+    Vegetable == 'sweet potato' ~ 'Convolvulaceae',
+    Vegetable == 'cherries' ~ 'Rosaceae',
+    TRUE ~ 'Other'
+  )) #creating family variable
+```
+
+### Saving Clean Data
+```{r}
+write.csv(Harvest_clean, "/Users/lauren/Desktop/agroecology/processed_data/Harvest_clean2024.csv", row.names = FALSE)
+```
+
+## Creating Total Data Frame
+```{r}
+harvest_total <- Harvest_clean |>
+  group_by(Vegetable) |>
+  summarise(total_lbs = sum(lbs, na.rm = TRUE),
+            total_cost = sum(Cost, na.rm = TRUE), 
+            .groups = 'drop') 
+
+harvest_total <- harvest_total |>
+  mutate(year_weightclass = ifelse(Vegetable == "watermelon", 'watermelon', 
+                            ifelse(total_lbs < 10, '< 10',
+                            ifelse(total_lbs >= 10 & total_lbs < 50, '10 ≤ 50', 
+                                    '> 50'))),
+         year_priceclass = ifelse(total_cost < 25, '<25', 
+                           ifelse(total_cost >= 25 & total_cost < 100, '25 ≤ 100',
+                           ifelse(total_cost >= 100 & total_cost < 300, '100 ≤ 300',
+                             '>300')))) # creating weight + price class in separate data frame
+
+harvest_total <- harvest_total |>
+  mutate(family = case_when(
+    Vegetable %in% c('bok choy', 'collards', 'kale', 'napa cabbage', 'radish', 'mustards') ~ 'Brassicaceae',
+    Vegetable %in% c('beets', 'chard', 'swiss chard', 'spinach') ~ 'Amaranthaceae',
+    Vegetable %in% c('carrots', 'dill', 'parsley') ~ 'Apiaceae',
+    Vegetable == 'lettuce' ~ 'Asteraceae',
+    Vegetable == 'snap peas' ~ 'Fabaceae',
+    Vegetable %in% c('chives', 'onions') ~ 'Alliaceae',
+    Vegetable %in% c('cucumbers', 'pumpkins', 'squash', 'watermelon', 'zucchini') ~ 'Cucurbitaceae',
+    Vegetable %in% c('cherry tomatoes', 'eggplant', 'peppers', 'tomatoes') ~ 'Solanaceae',
+    Vegetable %in% c('basil', 'lemon balm', 'mint') ~ 'Lamiaceae',
+    Vegetable %in% c('ginger', 'turmeric') ~ 'Zingiberaceae',
+    Vegetable %in% c('okra', 'roselle') ~ 'Malvaceae',
+    Vegetable == 'sweet potato' ~ 'Convolvulaceae',
+    Vegetable == 'cherries' ~ 'Rosaceae',
+    TRUE ~ 'Other'
+  ))
+```
+
+### Saving Total Data Frame
+```{r}
+write.csv(harvest_total, "/Users/lauren/Desktop/agroecology/processed_data/harvest_total2024.csv", row.names = FALSE)
+```
+
+
+## Visualizations
+### lbs
+```{r}
+pounds <- ggplot(data = Harvest_clean %>% filter(Vegetable %in% c('radish', 'swiss chard', 'carrots', 'tomatoes')), aes(x = Bimonthly, y = lbs, fill = Vegetable, text = paste("Vegetable:", Vegetable, "<br>Total lbs:", lbs)))+
+  geom_bar(stat = "identity") +
+  labs(title = "Pounds Harvested per Date",
+       x = NULL,
+       y = "Pounds (lbs)") +
+  theme_minimal() +
+  scale_fill_manual(values = c('radish' = "maroon", 'swiss chard' = "forestgreen", 'carrots' = "darkorange", 'tomatoes' = "firebrick"))+
+   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12))
+
+ggplotly(pounds, tooltip = "text")
+```
+```{r}
+#| fig-width: 18
+#| fig-height: 15
+ggplot(data = harvest_total, aes(x = Vegetable, y = total_lbs, fill = Vegetable)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(vars(year_weightclass), scales = "free") +
+  geom_text(aes(label = total_lbs), 
+            vjust = -0.5, # Position above the bar
+            color = "black") +
+  labs(title = "Total Weight of Vegetable Harvested Per Weight Class", 
+       y = "Total Weight (lbs) Per Year",
+       x = NULL) +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12))
+```
+```{r}
+#| fig-width: 15
+#| fig-height: 15
+
+ggplot(data = harvest_total, aes(x = Vegetable, y = total_lbs, fill = Vegetable)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(vars(family), scales = "free") +
+  labs(title = "Total Weight of Vegetable Harvested by Family", 
+       y = "Total Weight (lbs) per year",
+       x = NULL) +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12))
+```
+```{r}
+pounds_test <- ggplot(data = Harvest_clean, aes(x = Bimonthly, y = lbs, fill = family, text = paste("Vegetable:", Vegetable, "<br>Family:", family, "<br>Total lbs:", lbs)))+
+  geom_bar(stat = "identity", color = "black") +
+  labs(title = "Pounds Harvested per Date",
+       x = NULL,
+       y = "Pounds (lbs)") +
+  theme_minimal() +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12))
+
+ggplotly(pounds_test, tooltip = "text")
+```
+
+### cost
+```{r}
+cost <- ggplot(data = Harvest_clean %>% filter(Vegetable %in% c('radish', 'swiss chard', 'carrots', 'tomatoes')), aes(x = Bimonthly, y = Cost, fill = Vegetable, text = paste("Vegetable:", Vegetable, "<br>Total Cost: $", Cost))) +
+  geom_bar(stat = "identity") +
+  labs(title = "Total Revenue per Date",
+       x = NULL,
+       y = "Total Cost in $") +
+  theme_minimal() +
+  scale_fill_manual(values = c('radish' = "maroon", 'swiss chard' = "forestgreen", 'carrots' = "darkorange", 'tomatoes' = "firebrick"))+
+   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12))
+
+ggplotly(cost, tooltip = 'text')
+```
+```{r}
+#| fig-width: 18
+#| fig-height: 15
+ggplot(data = harvest_total, aes(x = Vegetable, y = total_cost, fill = Vegetable)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(vars(year_priceclass), scales = "free") +
+  geom_text(aes(label = total_cost), 
+            vjust = -0.5, # Position above the bar
+            color = "black") +
+  labs(title = "Total Revenue of Vegetable Harvested", 
+       y = "Total Cost ($) Per Year",
+       x = NULL) +
+   theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12))
+```
+```{r}
+
+```
+
+
