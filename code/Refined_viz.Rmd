@@ -29,6 +29,8 @@ Harvest <- read_csv("/Users/lauren/Desktop/agroecology/raw_data/Harvest2024.csv"
 
 ## Cleaning Data
 ```{r}
+#| warning: false
+#| message: false
 Harvest_clean <- Harvest[Harvest[[1]] != "TOTAL", ]
 
 Harvest_clean <- Harvest |>
@@ -89,11 +91,15 @@ Harvest_clean <- Harvest |>
 
 ### Saving Clean Data
 ```{r}
+#| warning: false
+#| message: false
 write.csv(Harvest_clean, "/Users/lauren/Desktop/agroecology/processed_data/Harvest_clean2024.csv", row.names = FALSE)
 ```
 
 ## Creating Total Data Frame
 ```{r}
+#| warning: false
+#| message: false
 harvest_total <- Harvest_clean |>
   group_by(Vegetable) |>
   summarise(total_lbs = sum(lbs, na.rm = TRUE),
@@ -131,6 +137,8 @@ harvest_total <- harvest_total |>
 
 ### Saving Total Data Frame
 ```{r}
+#| warning: false
+#| message: false
 write.csv(harvest_total, "/Users/lauren/Desktop/agroecology/processed_data/harvest_total2024.csv", row.names = FALSE)
 ```
 
@@ -138,6 +146,8 @@ write.csv(harvest_total, "/Users/lauren/Desktop/agroecology/processed_data/harve
 ## Visualizations
 ### lbs
 ```{r}
+#| warning: false
+#| message: false
 pounds <- ggplot(data = Harvest_clean %>% filter(Vegetable %in% c('radish', 'swiss chard', 'carrots', 'tomatoes')), aes(x = Bimonthly, y = lbs, fill = Vegetable, text = paste("Vegetable:", Vegetable, "<br>Total lbs:", lbs)))+
   geom_bar(stat = "identity") +
   labs(title = "Pounds Harvested per Date",
@@ -150,6 +160,8 @@ pounds <- ggplot(data = Harvest_clean %>% filter(Vegetable %in% c('radish', 'swi
 ggplotly(pounds, tooltip = "text")
 ```
 ```{r}
+#| warning: false
+#| message: false
 #| fig-width: 18
 #| fig-height: 15
 ggplot(data = harvest_total, aes(x = Vegetable, y = total_lbs, fill = Vegetable)) +
@@ -166,6 +178,8 @@ ggplot(data = harvest_total, aes(x = Vegetable, y = total_lbs, fill = Vegetable)
 ```{r}
 #| fig-width: 15
 #| fig-height: 15
+#| warning: false
+#| message: false
 
 ggplot(data = harvest_total, aes(x = Vegetable, y = total_lbs, fill = Vegetable)) +
   geom_bar(stat = "identity") +
@@ -176,6 +190,8 @@ ggplot(data = harvest_total, aes(x = Vegetable, y = total_lbs, fill = Vegetable)
    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12))
 ```
 ```{r}
+#| warning: false
+#| message: false
 pounds_test <- ggplot(data = Harvest_clean, aes(x = Bimonthly, y = lbs, fill = family, text = paste("Vegetable:", Vegetable, "<br>Family:", family, "<br>Total lbs:", lbs)))+
   geom_bar(stat = "identity", color = "black") +
   labs(title = "Pounds Harvested per Date",
@@ -189,6 +205,8 @@ ggplotly(pounds_test, tooltip = "text")
 
 ### cost
 ```{r}
+#| warning: false
+#| message: false
 cost <- ggplot(data = Harvest_clean %>% filter(Vegetable %in% c('radish', 'swiss chard', 'carrots', 'tomatoes')), aes(x = Bimonthly, y = Cost, fill = Vegetable, text = paste("Vegetable:", Vegetable, "<br>Total Cost: $", Cost))) +
   geom_bar(stat = "identity") +
   labs(title = "Total Revenue per Date",
@@ -203,6 +221,8 @@ ggplotly(cost, tooltip = 'text')
 ```{r}
 #| fig-width: 18
 #| fig-height: 15
+#| warning: false
+#| message: false
 ggplot(data = harvest_total, aes(x = Vegetable, y = total_cost, fill = Vegetable)) +
   geom_bar(stat = "identity") +
   facet_wrap(vars(year_priceclass), scales = "free") +
@@ -213,9 +233,6 @@ ggplot(data = harvest_total, aes(x = Vegetable, y = total_cost, fill = Vegetable
        y = "Total Cost ($) Per Year",
        x = NULL) +
    theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 12))
-```
-```{r}
-
 ```
 
 
