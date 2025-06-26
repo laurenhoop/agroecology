@@ -77,14 +77,15 @@ Harvest_clean <- Harvest |>
     Vegetable %in% c('carrots', 'dill', 'parsley') ~ 'Apiaceae',
     Vegetable == 'lettuce' ~ 'Asteraceae',
     Vegetable == 'snap peas' ~ 'Fabaceae',
-    Vegetable %in% c('chives', 'onions') ~ 'Alliaceae',
+    Vegetable %in% c('chives', 'onion') ~ 'Alliaceae',
     Vegetable %in% c('cucumbers', 'pumpkins', 'squash', 'watermelon', 'zucchini') ~ 'Cucurbitaceae',
-    Vegetable %in% c('cherry tomatoes', 'eggplant', 'peppers', 'tomatoes') ~ 'Solanaceae',
+    Vegetable %in% c('cherry tomatoes', 'eggplant', 'peppers', 'tomatoes', 'potatoes') ~ 'Solanaceae',
     Vegetable %in% c('basil', 'lemon balm', 'mint') ~ 'Lamiaceae',
     Vegetable %in% c('ginger', 'turmeric') ~ 'Zingiberaceae',
     Vegetable %in% c('okra', 'roselle') ~ 'Malvaceae',
-    Vegetable == 'sweet potato' ~ 'Convolvulaceae',
+    Vegetable == 'sweet potatoes' ~ 'Convolvulaceae',
     Vegetable == 'cherries' ~ 'Rosaceae',
+    Vegetable == 'lemongrass' ~ 'Poaceae',
     TRUE ~ 'Other'
   )) #creating family variable
 ```
