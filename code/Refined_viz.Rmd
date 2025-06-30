@@ -64,13 +64,17 @@ Harvest_clean <- Harvest |>
     )) #this is necessary to order xaxis by calendar year rather than alphabetically
   ) |>
   group_by(Bimonthly, Vegetable) |>
-  mutate(Bimonthly_Cost = sum(Cost, na.rm = TRUE)) |>
+  mutate(Bimonthly_Cost = sum(Cost, na.rm = TRUE),
+         Bimonthly_lbs = sum(lbs, na.rm = TRUE))|>
   ungroup() |>
+  
+  group_by(Vegetable) |>
   mutate(
-    weightclass = ifelse(Vegetable == "watermelon", 'watermelon',
-                         ifelse(lbs < 10, '< 10',
-                         ifelse(lbs >= 10 & lbs < 50, '10 ≤ 50', '> 50')))
-  ) |> #creating weight class in main data frame
+    year_lbs = sum(lbs, na.rm = TRUE),
+    year_cost = sum(Cost, na.rm = TRUE)
+  ) |>
+  ungroup() |>
+  
   mutate(family = case_when(
     Vegetable %in% c('bok choy', 'collards', 'kale', 'napa cabbage', 'radish', 'mustards') ~ 'Brassicaceae',
     Vegetable %in% c('beets', 'chard', 'swiss chard', 'spinach') ~ 'Amaranthaceae',
@@ -88,6 +92,9 @@ Harvest_clean <- Harvest |>
     Vegetable == 'lemongrass' ~ 'Poaceae',
     TRUE ~ 'Other'
   )) #creating family variable
+
+  
+
 ```
 
 ### Saving Clean Data
