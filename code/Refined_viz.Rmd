@@ -38,8 +38,8 @@ Harvest_clean <- Harvest |>
   na.omit() |> #gets rid of NA values
   rename(lbs = `Quantity (lb)`) |> #renames Quantity Variable
   mutate(
-    Vegetable = tolower(Vegetable), #lowercase all vegetable names
-    Vegetable = ifelse(Vegetable == "tumeric", "turmeric", Vegetable), #fixes turmeric misspelling
+    Vegetable = str_to_title(tolower(Vegetable)), #lowercase all vegetable names
+    Vegetable = ifelse(Vegetable == "Tumeric", "Turmeric", Vegetable), #fixes turmeric misspelling
     Cost = as.numeric(gsub("\\$", "", Cost)) #removing dollar sign
   ) |>
   mutate(
@@ -76,20 +76,20 @@ Harvest_clean <- Harvest |>
   ungroup() |>
   
   mutate(family = case_when(
-    Vegetable %in% c('bok choy', 'collards', 'kale', 'napa cabbage', 'radish', 'mustards') ~ 'Brassicaceae',
-    Vegetable %in% c('beets', 'chard', 'swiss chard', 'spinach') ~ 'Amaranthaceae',
-    Vegetable %in% c('carrots', 'dill', 'parsley') ~ 'Apiaceae',
-    Vegetable == 'lettuce' ~ 'Asteraceae',
-    Vegetable == 'snap peas' ~ 'Fabaceae',
-    Vegetable %in% c('chives', 'onion') ~ 'Alliaceae',
-    Vegetable %in% c('cucumbers', 'pumpkins', 'squash', 'watermelon', 'zucchini') ~ 'Cucurbitaceae',
-    Vegetable %in% c('cherry tomatoes', 'eggplant', 'peppers', 'tomatoes', 'potatoes') ~ 'Solanaceae',
-    Vegetable %in% c('basil', 'lemon balm', 'mint') ~ 'Lamiaceae',
-    Vegetable %in% c('ginger', 'turmeric') ~ 'Zingiberaceae',
-    Vegetable %in% c('okra', 'roselle') ~ 'Malvaceae',
-    Vegetable == 'sweet potatoes' ~ 'Convolvulaceae',
-    Vegetable == 'cherries' ~ 'Rosaceae',
-    Vegetable == 'lemongrass' ~ 'Poaceae',
+    Vegetable %in% c('Bok Choy', 'Collards', 'Kale', 'Napa Cabbage', 'Radish', 'Mustards') ~ 'Brassicaceae',
+    Vegetable %in% c('Beets', 'Chard', 'Swiss Chard', 'Spinach') ~ 'Amaranthaceae',
+    Vegetable %in% c('Carrots', 'Dill', 'Parsley') ~ 'Apiaceae',
+    Vegetable == 'Lettuce' ~ 'Asteraceae',
+    Vegetable == 'Snap Peas' ~ 'Fabaceae',
+    Vegetable %in% c('Chives', 'Onion') ~ 'Alliaceae',
+    Vegetable %in% c('Cucumbers', 'Pumpkins', 'Squash', 'Watermelon', 'Zucchini') ~ 'Cucurbitaceae',
+    Vegetable %in% c('Cherry Tomatoes', 'Eggplant', 'Peppers', 'Tomatoes', 'Potatoes') ~ 'Solanaceae',
+    Vegetable %in% c('Basil', 'Lemon Balm', 'Mint') ~ 'Lamiaceae',
+    Vegetable %in% c('Ginger', 'Turmeric') ~ 'Zingiberaceae',
+    Vegetable %in% c('Okra', 'Roselle') ~ 'Malvaceae',
+    Vegetable == 'Sweet Potatoes' ~ 'Convolvulaceae',
+    Vegetable == 'Cherries' ~ 'Rosaceae',
+    Vegetable == 'Lemongrass' ~ 'Poaceae',
     TRUE ~ 'Other'
   )) #creating family variable
 

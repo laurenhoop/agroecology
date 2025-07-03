@@ -58,7 +58,7 @@ ui <- page_fillable(
         pickerInput("crop", 
                     "Choose Crop:", 
                     choices =sort(unique(Harvest_clean$Vegetable)), 
-                    selected = "basil",
+                    selected = "Basil",
                     multiple = TRUE,
                     options = list(
                       'actions-box' = TRUE,
