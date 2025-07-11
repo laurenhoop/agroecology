@@ -93,6 +93,8 @@ Harvest_clean <- Harvest |>
     TRUE ~ 'Other'
   )) #creating family variable
 
+str(Harvest$Date)
+head(Harvest$Date)
   
 
 ```
