@@ -14,12 +14,12 @@ library(plotly)
 library(bslib)
 library(googlesheets4)
 
-# ===== Define UI for application that draws a histogram ===== 
+# Define UI for application that draws a histogram
 ui <- page_fillable(
   theme = shinytheme("spacelab"),
   
   # Application title
-  titlePanel("Agroecology App 2.0 Draft"),
+  titlePanel("Agroecology App 3.0 Draft"),
   
   # Adds a border around plot output called "highlighted card"
   tags$style(HTML("
@@ -36,7 +36,7 @@ ui <- page_fillable(
     card(
       pickerInput("year",
                   "Choose a Harvest Year",
-                  choices = c("2024", "2025"),
+                  choices = sort(unique(Year_test_clean$Year)),
                   selected = "2024",
                   multiple = TRUE,
                   options = list('actions-box' = TRUE,
@@ -45,31 +45,8 @@ ui <- page_fillable(
     # == user input 2 ==
     card(
       radioButtons("select_type", "Select type:", choices = c("Crop Family", "Individual Crop")),
-      
-      conditionalPanel(
-        condition = "input.select_type == 'Crop Family'",
-        pickerInput("family", 
-                    "Choose Crop Family:", 
-                    choices = sort(unique(Harvest_clean$family)),
-                    selected = "Alliaceae",
-                    multiple = TRUE,
-                    options = list(
-                      'actions-box' = TRUE,
-                      'live-search' = TRUE))
-      ),
-      
-      conditionalPanel(
-        condition = "input.select_type == 'Individual Crop'",
-        pickerInput("crop", 
-                    "Choose Crop:", 
-                    choices =sort(unique(Harvest_clean$Vegetable)), 
-                    selected = "Basil",
-                    multiple = TRUE,
-                    options = list(
-                      'actions-box' = TRUE,
-                      'live-search' = TRUE))
-      ),
-      
+      conditionalPanel(condition = "input.select_type == 'Crop Family'", uiOutput("family_ui")),
+      conditionalPanel(condition = "input.select_type == 'Individual Crop'", uiOutput("crop_ui")),
       verbatimTextOutput("selection")
     ),
     # == user input 3 ==
@@ -99,34 +76,64 @@ ui <- page_fillable(
          plotlyOutput("plot", height = "100%")) 
   )
 )
-
-# ===== Define server logic required to draw a histogram ===== 
-server <- function(input, output) {
+  
+# Define server logic required to draw a histogram
+server <- function(input, output)  {
+  
+  # Dynamic UI: Crop Families
+  output$family_ui <- renderUI({
+    req(input$year)
+    filtered <- Year_test_clean |> filter(Year %in% input$year)
+    fams <- sort(unique(filtered$Family))
+    
+    pickerInput("family", 
+                "Choose Crop Family:", 
+                choices = fams,
+                selected = fams[1],
+                multiple = TRUE,
+                options = list('actions-box' = TRUE, 'live-search' = TRUE))
+  })
+  
+  # Dynamic UI: Crops
+  output$crop_ui <- renderUI({
+    req(input$year)
+    filtered <- Year_test_clean |> filter(Year %in% input$year)
+    crops <- sort(unique(filtered$Vegetable))
+    
+    pickerInput("crop", 
+                "Choose Crop:", 
+                choices = crops,
+                selected = crops[1],
+                multiple = TRUE,
+                options = list('actions-box' = TRUE, 'live-search' = TRUE))
+  })
+  
   output$plot <- renderPlotly({
+    req(input$year)
     
-    # Filter by whether user selects to plot by families or individual crops
-    data_to_plot <- if (input$select_type == "Crop Family") {
-      Harvest_clean |> filter(family %in% input$family)
-    } else {
-      Harvest_clean |> filter(Vegetable %in% input$crop)
-    }
-    
+    data_to_plot <- Year_test_clean |>
+      filter(
+        Year %in% input$year,
+        if (input$select_type == "Crop Family") Family %in% input$family else TRUE,
+        if (input$select_type == "Individual Crop") Vegetable %in% input$crop else TRUE
+      )
+
     # Selecting columns
     x_var <- if (input$time == "Bimonthly") "Bimonthly" else "Vegetable"
-    y_var <- if (input$unit == "Pounds") "lbs" else "Cost"
+    y_var <- if (input$unit == "Pounds") "Quantity" else "Cost"
     
     # Creating plot labels
     data_to_plot <- data_to_plot |>
       mutate(
         tooltip = case_when(
-          input$unit == "Pounds"  ~ paste("Vegetable:", Vegetable, "<br>Family:", family, "<br>Obs Pounds:", !!sym(y_var), "<br>Total Pounds:", year_lbs),
-          input$unit == "Revenue" ~ paste("Vegetable:", Vegetable, "<br>Family:", family, "<br>Obs Revenue: $", !!sym(y_var), "<br>Total Revenue:", year_cost),
+          input$unit == "Pounds"  ~ paste("Vegetable:", Vegetable, "<br>Family:", Family,"<br>Year:", Year, "<br>Obs Pounds:", !!sym(y_var), "<br>Total Pounds:", Year_Quantity),
+          input$unit == "Revenue" ~ paste("Vegetable:", Vegetable, "<br>Family:", Family,"<br>Year:", Year,"<br>Obs Revenue: $", !!sym(y_var), "<br>Total Revenue:", Year_Cost),
           TRUE ~ paste("Vegetable:", Vegetable)
         ),
-        tooltip2 = paste("Vegetable:", Vegetable, "<br>Family:", family, "<br>Obs Pounds:", lbs, "<br>Total Pounds:", year_lbs),
-        tooltip3 = paste("Vegetable:", Vegetable, "<br>Family:", family, "<br>Obs Revenue:", Cost, "<br>Total Revenue:", year_cost),
-        tooltip4 = paste("Vegetable:", Vegetable, "<br>Family:", family, "<br>Obs Pounds:", lbs, "<br>Total Pounds:", Bimonthly_lbs),
-        tooltip5 = paste("Vegetable:", Vegetable, "<br>Family:", family, "<br>Obs Revenue:", Cost, "<br>Total Revenue:", Bimonthly_Cost)
+        tooltip2 = paste("Vegetable:", Vegetable, "<br>Family:", Family,"<br>Year:", Year, "<br>Obs Pounds:", Quantity, "<br>Total Pounds:", Year_Quantity),
+        tooltip3 = paste("Vegetable:", Vegetable, "<br>Family:", Family,"<br>Year:", Year, "<br>Obs Revenue:", Cost, "<br>Total Revenue:", Year_Cost),
+        tooltip4 = paste("Vegetable:", Vegetable, "<br>Family:", Family,"<br>Year:", Year, "<br>Obs Pounds:", Quantity, "<br>Total Pounds:", Bimonthly_Quantity),
+        tooltip5 = paste("Vegetable:", Vegetable, "<br>Family:", Family,"<br>Year:", Year, "<br>Obs Revenue:", Cost, "<br>Total Revenue:", Bimonthly_Cost)
       )
     
     # === CASE 1: User selects "Both"
@@ -134,18 +141,19 @@ server <- function(input, output) {
       
       data_long <- data_to_plot |>
         mutate(tooltip6 = paste("Vegetable:", Vegetable, 
-                                "<br>Family:", family, 
-                                "<br>Revenue:", year_cost, 
-                                "<br>Pounds:", year_lbs)) |>
-        select(Vegetable, family, year_lbs, year_cost, tooltip6) |>
+                                "<br>Family:", Family,
+                                "<br>Year:", Year,
+                                "<br>Revenue:", Year_Cost, 
+                                "<br>Pounds:", Year_Quantity)) |>
+        select(Vegetable, Family, Year_Quantity, Year_Cost, tooltip6) |>
         pivot_longer(
-          cols = c(year_lbs, year_cost),
+          cols = c(Year_Quantity, Year_Cost),
           names_to = "Metric",
           values_to = "Value"
         ) |>
         mutate(Metric = recode(Metric,
-                               year_lbs = "Pounds",
-                               year_cost = "Revenue"))
+                               Year_Quantity = "Pounds",
+                               Year_Cost = "Revenue"))
       
       p <- ggplot(data_long, aes(x = Vegetable, y = Value, fill = Metric, text = tooltip6)) +
         geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.6) +
@@ -159,11 +167,11 @@ server <- function(input, output) {
     
     # === CASE 2: User selects "Both" + Stacked
     if (input$unit == "Both" && (!input$time == "Yearly" || input$side_stack == "Stacked")) {
-      lbs_tooltip <- if (input$time == "Yearly") "tooltip2" else "tooltip4"
+      Quantity_tooltip <- if (input$time == "Yearly") "tooltip2" else "tooltip4"
       rev_tooltip <- if (input$time == "Yearly") "tooltip3" else "tooltip5"
       
       # Create Pounds plot
-      p2 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = lbs, fill = Vegetable, text = !!sym(lbs_tooltip))) +
+      p2 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = Quantity, fill = Vegetable, text = !!sym(Quantity_tooltip))) +
         geom_bar(stat = "identity") +
         scale_x_discrete(drop = FALSE) +
         labs(title = "Harvest shown in Pounds", y = "Pounds", x = NULL) +
@@ -196,8 +204,7 @@ server <- function(input, output) {
       
       return(ggplotly(p4, tooltip = "text"))
     }
-  })  # closes renderPlotly
-}      # closes server
-
-# ===== Run the application ===== 
+  })}
+  
+# Run the application 
 shinyApp(ui = ui, server = server)
