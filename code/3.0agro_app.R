@@ -12,6 +12,7 @@ library(patchwork)
 library(dplyr)
 library(plotly)
 library(bslib)
+library(lubridate)
 library(googlesheets4)
 
 # ===== loading Google sheet =====
@@ -20,14 +21,17 @@ Master_sheet <- read_sheet("https://docs.google.com/spreadsheets/d/1st3bYMIaT2TE
 
 # ===== cleaning data =====
 Master_sheet_clean <- Master_sheet |>
-  na.omit() |> #gets rid of NA values
+  filter(!is.na(Date), !is.na(Quantity), !is.na(Cost)) |>
   mutate(
     #removing dollar sign
-    Cost = as.numeric(gsub("\\$", "", Cost)) 
+    Cost = as.numeric(gsub("\\$", "", Cost)),
+    #changing variable type of date variable
+    Year = year(Date),
+    Monthly = paste(month(Date, label = TRUE, abbr = TRUE), Year),
+    # ensures xaxis is chronological
+    Monthly = factor(Monthly, levels = unique(Monthly[order(Date)]))
   ) |>
   mutate(
-    #changing variable type of date variable
-    Date = as.Date(Date, format = "%m/%d/%Y"), 
     #creates the bimonthly variable to be formatted as 'Early/Late' + 'Month Abbreviation'
     Bimonthly = case_when(
       day(Date) <= 15 ~ paste("Early", month(Date, label = TRUE, abbr = TRUE), Year),
@@ -40,6 +44,12 @@ Master_sheet_clean <- Master_sheet |>
   # adding total cost + quantity per vegetable per bimonthly period
   mutate(Bimonthly_Cost = sum(Cost, na.rm = TRUE),
          Bimonthly_Quantity = sum(Quantity, na.rm = TRUE)) |>
+  ungroup() |>
+  
+  group_by(Year, Monthly, Vegetable) |>
+  # adding total cost + quantity per vegetable per monthly period
+  mutate(Monthly_Cost = sum(Cost, na.rm = TRUE),
+         Monthly_Quantity = sum(Quantity, na.rm = TRUE)) |>
   ungroup() |>
   
   group_by(Year, Vegetable) |>
@@ -73,7 +83,7 @@ ui <- page_fillable(
       pickerInput("year",
                   "Choose a Harvest Year",
                   choices = sort(unique(Master_sheet_clean$Year)),
-                  selected = "2024",
+                  selected = min(Master_sheet_clean$Year),
                   multiple = TRUE,
                   options = list('actions-box' = TRUE,
                                  'live-search' = TRUE))
@@ -89,7 +99,7 @@ ui <- page_fillable(
     card(
       pickerInput("time",
                   "Choose a Timescale",
-                  choices = c("Bimonthly", "Yearly"))
+                  choices = c("Monthly", "Bimonthly", "Yearly"))
     ),
     # == user input 4 ==
     card(
@@ -151,6 +161,12 @@ server <- function(input, output)  {
       distinct(Bimonthly) |>
       pull(Bimonthly)
     
+    # creates a new monthly variable that filters out years that are not selected
+    monthly_levels <- Master_sheet_clean |>
+      filter(Year %in% input$year) |>
+      distinct(Monthly) |>
+      pull(Monthly)
+    
     # filters plotted observations based on year(s) selected
     req(input$year)
     data_to_plot <- Master_sheet_clean |>
@@ -161,12 +177,13 @@ server <- function(input, output)  {
       )
 
     # Selecting columns
-    x_var <- if (input$time == "Bimonthly") "Bimonthly" else "Vegetable"
+    x_var <- if (input$time == "Bimonthly") "Bimonthly" else if (input$time == "Monthly") "Monthly" else "Vegetable"
     y_var <- if (input$unit == "Yield") "Quantity" else "Cost"
     
     # Creating plot labels + mutating parent Bimonthly variable to only contain filtered values from above
     data_to_plot <- data_to_plot |>
       mutate(
+        Monthly = factor(Monthly, levels = monthly_levels),
         Bimonthly = factor(Bimonthly, levels = bimonthly_levels),
         tooltip = case_when(
           input$unit == "Yield"  ~ paste("Year:", Year, "<br>Vegetable:", Vegetable, "<br>Family:", Family, "<br>Yield Unit:", Unit, "<br>Obs Yield:", !!sym(y_var), "<br>Total Yield:", Year_Quantity),

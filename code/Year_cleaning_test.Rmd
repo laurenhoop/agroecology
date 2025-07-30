@@ -30,7 +30,8 @@ Year_test <- read_csv("/Users/lauren/Desktop/agroecology/raw_data/Master Harvest
 Year_test_clean <- Year_test |>
   na.omit() |> #gets rid of NA values
   mutate(
-    Cost = as.numeric(gsub("\\$", "", Cost)) #removing dollar sign
+    Cost = as.numeric(gsub("\\$", "", Cost)),
+    Monthly = paste(month(Date, label = TRUE, abbr = TRUE), Year)#removing dollar sign
   ) |>
   mutate(
     Date = as.Date(Date, format = "%m/%d/%Y"), #changing variable type of date variable
@@ -43,6 +44,12 @@ Year_test_clean <- Year_test |>
   group_by(Year, Bimonthly, Vegetable) |>
   mutate(Bimonthly_Cost = sum(Cost, na.rm = TRUE),
          Bimonthly_Quantity = sum(Quantity, na.rm = TRUE)) |>
+  ungroup() |>
+  
+  group_by(Year, Monthly, Vegetable) |>
+  # adding total cost + quantity per vegetable per monthly period
+  mutate(Monthly_Cost = sum(Cost, na.rm = TRUE),
+         Monthly_Quantity = sum(Quantity, na.rm = TRUE)) |>
   ungroup() |>
   
   group_by(Year, Vegetable) |>
