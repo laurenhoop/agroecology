@@ -1,6 +1,7 @@
 
 # ===== loading libraries =====
 library(shiny)
+library(shinyBS)
 library(shinythemes)
 library(shinyWidgets)
 library(tidyverse)
@@ -103,14 +104,36 @@ ui <- page_fillable(
     ),
     # == user input 4 ==
     card(
-      pickerInput("unit",
-                  "Choose a Harvest Unit",
-                  choices = c ("Yield", "Revenue", "Both")),
+      pickerInput(
+        "unit",
+        label = tags$div(
+          "Choose a Harvest Unit",
+          # creating help icon
+          tags$span(
+            id = "unit_help",
+            style = "color: #007BFF; margin-left: 5px; cursor: help; font-weight: bold;",
+            "\u2753" # Unicode character for question mark in bubble
+          )
+        ),
+        choices = c("Weight (lbs)", "Revenue", "Both"),
+      ),
       conditionalPanel(
-        condition = "input.time == 'Yearly' && input.unit == 'Both'",
-        radioButtons("side_stack", "Select layout:", choices = c("Side by Side", "Stacked"))
+        condition = "input.unit == 'Both'",
+        radioButtons(
+          "side_stack",
+          "Display Mode:",
+          choices = c("Side by Side", "Stacked"),
+          selected = "Side by Side"
+        )
+      ),
+      # creating text that will be displayed in help icon
+      bsTooltip(
+        "unit_help",
+        "Revenue is calculated using average US unit prices found on the following websites: ",
+        placement = "right",
+        trigger = "hover"
       )
-    ),
+  ),
   ),
   
   # === Defines second row of app ===
@@ -167,6 +190,10 @@ server <- function(input, output)  {
       distinct(Monthly) |>
       pull(Monthly)
     
+    # Selecting columns
+    x_var <- if (input$time == "Bimonthly") "Bimonthly" else if (input$time == "Monthly") "Monthly" else "Vegetable"
+    y_var <- if (input$unit == "Weight (lbs)") "Quantity" else "Cost"
+    
     # filters plotted observations based on year(s) selected
     req(input$year)
     data_to_plot <- Master_sheet_clean |>
@@ -174,51 +201,78 @@ server <- function(input, output)  {
         Year %in% input$year,
         if (input$select_type == "Crop Family") Family %in% input$family else TRUE,
         if (input$select_type == "Individual Crop") Vegetable %in% input$crop else TRUE
-      )
-
-    # Selecting columns
-    x_var <- if (input$time == "Bimonthly") "Bimonthly" else if (input$time == "Monthly") "Monthly" else "Vegetable"
-    y_var <- if (input$unit == "Yield") "Quantity" else "Cost"
+      ) 
+  
+    # makes it to where plot labels show bar totals instead of individual observations    
+    group_vars <- c("Year", x_var)
+    
+    if (x_var != "Vegetable") {
+      group_vars <- c(group_vars, "Vegetable")
+    }
+    
+    group_vars <- c(group_vars, "Family")
+    
+    data_to_plot <- data_to_plot |>
+      group_by(across(all_of(group_vars))) |>
+      summarise(
+  Quantity = round(sum(Quantity, na.rm = TRUE), 2),
+  Cost = round(sum(Cost, na.rm = TRUE), 2),
+  Year_Quantity = round(max(Year_Quantity, na.rm = TRUE), 2),
+  Year_Cost = round(max(Year_Cost, na.rm = TRUE), 2),
+  .groups = "drop"
+)
     
     # Creating plot labels + mutating parent Bimonthly variable to only contain filtered values from above
     data_to_plot <- data_to_plot |>
       mutate(
-        Monthly = factor(Monthly, levels = monthly_levels),
-        Bimonthly = factor(Bimonthly, levels = bimonthly_levels),
         tooltip = case_when(
-          input$unit == "Yield"  ~ paste("Year:", Year, "<br>Vegetable:", Vegetable, "<br>Family:", Family, "<br>Yield Unit:", Unit, "<br>Obs Yield:", !!sym(y_var), "<br>Total Yield:", Year_Quantity),
-          input$unit == "Revenue" ~ paste("Year:", Year, "<br>Vegetable:", Vegetable, "<br>Family:", Family, "<br>Yield Unit:", Unit, "<br>Obs Revenue: $", !!sym(y_var), "<br>Total Revenue:", Year_Cost),
-          TRUE ~ paste("Vegetable:", Vegetable)
-        ),
-        tooltip2 = paste("Year:", Year, "<br>Vegetable:", Vegetable, "<br>Family:", Family, "<br>Yield Unit:", Unit, "<br>Obs Yield:", Quantity, "<br>Total Yield:", Year_Quantity),
-        tooltip3 = paste("Year:", Year, "<br>Vegetable:", Vegetable, "<br>Family:", Family, "<br>Yield Unit:", Unit, "<br>Obs Revenue:", Cost, "<br>Total Revenue:", Year_Cost),
-        tooltip4 = paste("Year:", Year, "<br>Vegetable:", Vegetable, "<br>Family:", Family, "<br>Yield Unit:", Unit, "<br>Obs Yield:", Quantity, "<br>Total Yield:", Bimonthly_Quantity),
-        tooltip5 = paste("Year:", Year, "<br>Vegetable:", Vegetable, "<br>Family:", Family, "<br>Yield Unit:", Unit, "<br>Obs Revenue:", Cost, "<br>Total Revenue:", Bimonthly_Cost)
+          input$unit == "Weight (lbs)" ~ paste0(
+            "Year: ", Year,
+            "<br>Vegetable: ", Vegetable,
+            "<br>Family: ", Family,
+            "<br>Total Weight (lbs): ", Quantity
+          ),
+          
+          input$unit == "Revenue" ~ paste0(
+            "Year: ", Year,
+            "<br>Vegetable: ", Vegetable,
+            "<br>Family: ", Family,
+            "<br>Total Revenue: $", Cost
+          ),
+          
+          input$unit == "Both" ~ paste0(
+            "Year: ", Year,
+            "<br>Vegetable: ", Vegetable,
+            "<br>Family: ", Family,
+            "<br>Total Weight (lbs): ", Quantity,
+            "<br>Total Revenue: $", Cost
+          )
+        )
       )
     
-    # === CASE 1: User selects "Both"
+    # === CASE 1: User selects "Both" + Side by Side ===
     if (input$unit == "Both" && input$time == "Yearly" && input$side_stack == "Side by Side") {
       
       data_long <- data_to_plot |>
-        mutate(tooltip6 = paste("Year:", Year,
-                                "<br>Vegetable:", Vegetable, 
-                                "<br>Family:", Family,
-                                "<br>Revenue:", Year_Cost, 
-                                "<br>Yield:", Year_Quantity)) |>
-        select(Vegetable, Family, Year_Quantity, Year_Cost, tooltip6) |>
+        select(Year, Vegetable, Family, Year_Quantity, Year_Cost, tooltip) |>
         pivot_longer(
           cols = c(Year_Quantity, Year_Cost),
           names_to = "Metric",
           values_to = "Value"
         ) |>
-        mutate(Metric = recode(Metric,
-                               Year_Quantity = "Yield",
-                               Year_Cost = "Revenue"))
+        mutate(
+          Metric = recode(Metric, Year_Quantity = "Weight (lbs)", Year_Cost = "Revenue"),
+          tooltip = paste0(
+            "Year: ", Year,
+            "<br>Vegetable: ", Vegetable,
+            "<br>Family: ", Family,
+            "<br>Total ", Metric, ": ", Value
+          ))
       
-      p <- ggplot(data_long, aes(x = Vegetable, y = Value, fill = Metric, text = tooltip6)) +
+      p <- ggplot(data_long, aes(x = Vegetable, y = Value, fill = Metric, text = tooltip)) +
         geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.6) +
         scale_x_discrete(drop = FALSE) +
-        labs(title = "Harvest by Yield and Revenue (Side by Side)",
+        labs(title = "Harvest by Weight (lbs) and Revenue (Side by Side)",
              x = NULL, y = "Value", fill = "Metric") +
         theme_minimal() +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
@@ -228,22 +282,20 @@ server <- function(input, output)  {
     
     # === CASE 2: User selects "Both" + Stacked
     if (input$unit == "Both" && (!input$time == "Yearly" || input$side_stack == "Stacked")) {
-      Quantity_tooltip <- if (input$time == "Yearly") "tooltip2" else "tooltip4"
-      rev_tooltip <- if (input$time == "Yearly") "tooltip3" else "tooltip5"
       
-      # Create Yield plot
-      p2 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = Quantity, fill = Vegetable, text = !!sym(Quantity_tooltip))) +
+      # Create Weight (lbs) plot
+      p2 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = Quantity, fill = Vegetable, text = tooltip)) +
         geom_bar(stat = "identity") +
         scale_x_discrete(drop = FALSE) +
-        labs(title = "Harvest shown in Yield", y = "Yield", x = NULL) +
+        labs(y = "Weight (lbs)", x = NULL) +
         theme_minimal() +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
       
       # Create Revenue plot
-      p3 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = Cost, fill = Vegetable, text = !!sym(rev_tooltip))) +
+      p3 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = Cost, fill = Vegetable, text = tooltip)) +
         geom_bar(stat = "identity") +
         scale_x_discrete(drop = FALSE) +
-        labs(title = "Harvest shown in Revenue", y = "Revenue ($)", x = NULL) +
+        labs(title = "Harvest by Weight (lbs) and Revenue (Stacked)", y = "Revenue ($)", x = NULL) +
         theme_minimal() +
         theme(axis.text.x = element_text(angle = 45, hjust = 1))
       
@@ -254,7 +306,7 @@ server <- function(input, output)  {
       return(subplot(p2_ly, p3_ly, nrows = 2, shareX = TRUE, titleY = TRUE))
     }
     
-    # === CASE 3: User selects only Yield OR Revenue
+    # === CASE 3: User selects only Weight (lbs) OR Revenue
     if (input$unit != "Both") {
       p4 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = !!sym(y_var), fill = Vegetable, text = tooltip)) +
         geom_bar(stat = "identity") +
