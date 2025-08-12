@@ -15,6 +15,7 @@ library(plotly)
 library(bslib)
 library(lubridate)
 library(googlesheets4)
+library(viridis)
 
 # ===== loading Google sheet =====
 gs4_deauth()
@@ -66,7 +67,12 @@ ui <- page_fillable(
   theme = shinytheme("spacelab"),
   
   # Application title
-  titlePanel("Agroecology App 3.0 Draft"),
+  tags$div(
+    "Agroecology App 3.0 Draft",
+    style = "text-align: center; background-color: #95c2de; color: black;
+            padding: 10px 0; border-radius: 5px; font-weight: bold; font-size: 3rem;
+            margin-bottom: 20px;"
+  ),
   
   # Adds a border around plot output called "highlighted card"
   tags$style(HTML("
@@ -77,12 +83,24 @@ ui <- page_fillable(
   }
 ")),
   
+  # Adds a "class" of a colored background that can be added to each card/user input below
+  tags$style(HTML("
+  .colored-background-card {
+    background-color: #d1e5f0;  /* light sage green background */
+    border-radius: 8px;
+    color: black;
+    padding: 15px;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.1);
+    margin-bottom: 15px;  /* space below each card */
+  }
+")),
+  
   # === Defines first row of app ===
   layout_column_wrap(
     # == user input 1 ==
-    card(
+    card(class = "colored-background-card",
       pickerInput("year",
-                  "Choose a Harvest Year",
+                  tags$div("Choose a Harvest Year", style = "font-size: 18px; font-weight: bold;"),
                   choices = sort(unique(Master_sheet_clean$Year)),
                   selected = min(Master_sheet_clean$Year),
                   multiple = TRUE,
@@ -90,24 +108,26 @@ ui <- page_fillable(
                                  'live-search' = TRUE))
     ),
     # == user input 2 ==
-    card(
-      radioButtons("select_type", "Select type:", choices = c("Crop Family", "Individual Crop")),
+    card(class = "colored-background-card",
       conditionalPanel(condition = "input.select_type == 'Crop Family'", uiOutput("family_ui")),
       conditionalPanel(condition = "input.select_type == 'Individual Crop'", uiOutput("crop_ui")),
-      verbatimTextOutput("selection")
+      radioButtons("select_type", "Select type:", choices = c("Crop Family", "Individual Crop")),
+      verbatimTextOutput("selection"),
+      
+      # creating text that will be displayed in help icon
+      bsTooltip(
+        "family_help",
+        "Crop Family graphic can be found on _____: ",
+        placement = "right",
+        trigger = "hover"
+      )
     ),
     # == user input 3 ==
-    card(
-      pickerInput("time",
-                  "Choose a Timescale",
-                  choices = c("Monthly", "Bimonthly", "Yearly"))
-    ),
-    # == user input 4 ==
-    card(
+    card(class = "colored-background-card",
       pickerInput(
         "unit",
         label = tags$div(
-          "Choose a Harvest Unit",
+          "Choose a Harvest Unit", style = "font-size: 18px; font-weight: bold;",
           # creating help icon
           tags$span(
             id = "unit_help",
@@ -118,7 +138,7 @@ ui <- page_fillable(
         choices = c("Weight (lbs)", "Revenue", "Both"),
       ),
       conditionalPanel(
-        condition = "input.unit == 'Both'",
+        condition = "input.unit == 'Both' && input.time == 'Yearly'",
         radioButtons(
           "side_stack",
           "Display Mode:",
@@ -133,6 +153,12 @@ ui <- page_fillable(
         placement = "right",
         trigger = "hover"
       )
+  ),
+  # == user input 4 ==
+   card(class = "colored-background-card",
+       pickerInput("time",
+                   tags$div( "Choose a Timescale", style = "font-size: 18px; font-weight: bold;"),
+                   choices = c("Monthly", "Bimonthly", "Yearly"))
   ),
   ),
   
@@ -156,7 +182,15 @@ server <- function(input, output)  {
     fams <- sort(unique(filtered$Family))
     
     pickerInput("family", 
-                "Choose Crop Family:", 
+                  label = tags$div(
+                    "Choose a Family", style = "font-size: 18px; font-weight: bold;",
+                    # creating help icon
+                    tags$span(
+                      id = "family_help",
+                      style = "color: #007BFF; margin-left: 5px; cursor: help; font-weight: bold;",
+                      "\u2753" # Unicode character for question mark in bubble
+                    )
+                    ),
                 choices = fams,
                 selected = fams[1],
                 multiple = TRUE,
@@ -170,7 +204,7 @@ server <- function(input, output)  {
     crops <- sort(unique(filtered$Vegetable))
     
     pickerInput("crop", 
-                "Choose Crop:", 
+                tags$div("Choose Crop:",  style = "font-size: 18px; font-weight: bold;"),
                 choices = crops,
                 selected = crops[1],
                 multiple = TRUE,
@@ -178,6 +212,7 @@ server <- function(input, output)  {
   })
   
   output$plot <- renderPlotly({
+    
     # creates a new bimonthly variable that filters out years that are not selected
     bimonthly_levels <- Master_sheet_clean |>
       filter(Year %in% input$year) |>
@@ -203,6 +238,13 @@ server <- function(input, output)  {
         if (input$select_type == "Individual Crop") Vegetable %in% input$crop else TRUE
       ) 
   
+    # further builds off above filter (monthly/bimonthly_levels) to ensure only selected dates are plotted on axis
+    if (input$time == "Bimonthly") {
+      data_to_plot$Bimonthly <- factor(data_to_plot$Bimonthly, levels = bimonthly_levels)
+    } else if (input$time == "Monthly") {
+      data_to_plot$Monthly <- factor(data_to_plot$Monthly, levels = monthly_levels)
+    }
+    
     # makes it to where plot labels show bar totals instead of individual observations    
     group_vars <- c("Year", x_var)
     
@@ -250,7 +292,7 @@ server <- function(input, output)  {
         )
       )
     
-    # === CASE 1: User selects "Both" + Side by Side ===
+    # ============ CASE 1: User selects "Both" + Side by Side ============
     if (input$unit == "Both" && input$time == "Yearly" && input$side_stack == "Side by Side") {
       
       data_long <- data_to_plot |>
@@ -272,15 +314,22 @@ server <- function(input, output)  {
       p <- ggplot(data_long, aes(x = Vegetable, y = Value, fill = Metric, text = tooltip)) +
         geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.6) +
         scale_x_discrete(drop = FALSE) +
-        labs(title = "Harvest by Weight (lbs) and Revenue (Side by Side)",
+        labs(title = "Harvest by Weight (lbs) and Revenue",
              x = NULL, y = "Value", fill = "Metric") +
+        scale_fill_manual(values = c("Revenue" = "#b63679",
+                          "Weight (lbs)" = "#f98e09")) +
         theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        theme(
+          plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+          axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+          axis.text.y = element_text(size = 12),
+          axis.title.y = element_text(size = 15),
+          )
       
       return(ggplotly(p, tooltip = "text"))
     }
     
-    # === CASE 2: User selects "Both" + Stacked
+    # ============ CASE 2: User selects "Both" + Stacked ============
     if (input$unit == "Both" && (!input$time == "Yearly" || input$side_stack == "Stacked")) {
       
       # Create Weight (lbs) plot
@@ -288,16 +337,26 @@ server <- function(input, output)  {
         geom_bar(stat = "identity") +
         scale_x_discrete(drop = FALSE) +
         labs(y = "Weight (lbs)", x = NULL) +
+        scale_fill_viridis_d(option = "D") +
         theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        theme(
+          plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+          axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+          axis.text.y = element_text(size = 12),
+          axis.title.y = element_text(size = 15))
       
       # Create Revenue plot
       p3 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = Cost, fill = Vegetable, text = tooltip)) +
         geom_bar(stat = "identity") +
         scale_x_discrete(drop = FALSE) +
-        labs(title = "Harvest by Weight (lbs) and Revenue (Stacked)", y = "Revenue ($)", x = NULL) +
+        labs(title = "Harvest by Weight (lbs) and Revenue", y = "Revenue ($)", x = NULL) +
+        scale_fill_viridis_d(option = "D") +
         theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        theme(
+          plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+          axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+          axis.text.y = element_text(size = 12),
+          axis.title.y = element_text(size = 15))
       
       p2_ly <- ggplotly(p2, tooltip = "text")
       p3_ly <- ggplotly(p3, tooltip = "text") |>
@@ -306,14 +365,19 @@ server <- function(input, output)  {
       return(subplot(p2_ly, p3_ly, nrows = 2, shareX = TRUE, titleY = TRUE))
     }
     
-    # === CASE 3: User selects only Weight (lbs) OR Revenue
+    # ============ CASE 3: User selects only Weight (lbs) OR Revenue ============
     if (input$unit != "Both") {
       p4 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = !!sym(y_var), fill = Vegetable, text = tooltip)) +
         geom_bar(stat = "identity") +
         scale_x_discrete(drop = FALSE) +
         labs(title = paste(input$unit, "Harvested"), x = NULL, y = input$unit) +
+        scale_fill_viridis_d(option = "plasma") +
         theme_minimal() +
-        theme(axis.text.x = element_text(angle = 45, hjust = 1))
+        theme(
+          plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+          axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+          axis.text.y = element_text(size = 12),
+          axis.title.y = element_text(size = 15))
       
       return(ggplotly(p4, tooltip = "text"))
     }
