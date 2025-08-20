@@ -68,7 +68,7 @@ ui <- page_fillable(
   
   # Application title
   tags$div(
-    "Agroecology App 3.0 Draft",
+    "Crop Harvest App",
     style = "text-align: center; background-color: #95c2de; color: black;
             padding: 10px 0; border-radius: 5px; font-weight: bold; font-size: 3rem;
             margin-bottom: 20px;"
@@ -324,9 +324,20 @@ server <- function(input, output)  {
           axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
           axis.text.y = element_text(size = 12),
           axis.title.y = element_text(size = 15),
-          )
+          ) 
       
-      return(ggplotly(p, tooltip = "text"))
+        p <- ggplotly(p, tooltip = "text") |>
+          layout(
+            legend = list(
+              orientation = "h",         # horizontal legend
+              x = 0.5, xanchor = "center",
+              y = -0.2,                  # below the plot area
+              font = list(size = 16),    # legend item font size
+              title = list(              # legend title styling
+                font = list(size = 18))
+            ),
+            margin = list(b = 90))        # make room for the bottom legend
+        return(p)
     }
     
     # ============ CASE 2: User selects "Both" + Stacked ============
@@ -358,7 +369,20 @@ server <- function(input, output)  {
           axis.text.y = element_text(size = 12),
           axis.title.y = element_text(size = 15))
       
-      p2_ly <- ggplotly(p2, tooltip = "text")
+      p2_ly <- ggplotly(p2, tooltip = "text") |>
+        layout(
+          legend = list(
+            orientation = "h",         # horizontal legend
+            x = 0.5, xanchor = "center",
+            y = -0.2,                  # below the plot area
+            font = list(size = 16),    # legend item font size
+            title = list(              # legend title styling
+              font = list(size = 18)
+            )
+          ),
+          margin = list(b = 90)        # make room for the bottom legend
+        )
+      
       p3_ly <- ggplotly(p3, tooltip = "text") |>
         style(showlegend = FALSE)
       
@@ -379,7 +403,22 @@ server <- function(input, output)  {
           axis.text.y = element_text(size = 12),
           axis.title.y = element_text(size = 15))
       
-      return(ggplotly(p4, tooltip = "text"))
+      
+      p4 <- ggplotly(p4, tooltip = "text") |>
+        layout(
+          legend = list(
+            orientation = "h",         # horizontal legend
+            x = 0.5, xanchor = "center",
+            y = -0.2,                  # below the plot area
+            font = list(size = 16),    # legend item font size
+            title = list(              # legend title styling
+              font = list(size = 18)
+            )
+          ),
+          margin = list(b = 90)        # make room for the bottom legend
+        )
+      
+      return(p4)
     }
   })}
   
