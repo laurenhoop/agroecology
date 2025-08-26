@@ -135,7 +135,7 @@ ui <- page_fillable(
                "\u2753" # Unicode character for question mark in bubble
              )
            ),
-           choices = c("Weight (lbs)", "Revenue", "Both"),
+           choices = c("Weight (lbs)", "Revenue ($)", "Both"),
          ),
          conditionalPanel(
            condition = "input.unit == 'Both' && input.time == 'Yearly'",
@@ -169,7 +169,8 @@ ui <- page_fillable(
          style = "height: 60vh;", # makes graph fill 60% of whatever screen it is being displayed on
          fill = TRUE,
          plotlyOutput("plot", height = "100%")) 
-  )
+  ),
+  tags$footer("Created by Lauren Hooper with the Agroecology Farm Lab at NC State University 2025")
 )
 
 #============== Define server logic required to draw a histogram ==============
@@ -275,7 +276,7 @@ server <- function(input, output)  {
             "<br>Total Weight (lbs): ", Quantity
           ),
           
-          input$unit == "Revenue" ~ paste0(
+          input$unit == "Revenue ($)" ~ paste0(
             "Year: ", Year,
             "<br>Vegetable: ", Vegetable,
             "<br>Family: ", Family,
@@ -303,7 +304,7 @@ server <- function(input, output)  {
           values_to = "Value"
         ) |>
         mutate(
-          Metric = recode(Metric, Year_Quantity = "Weight (lbs)", Year_Cost = "Revenue"),
+          Metric = recode(Metric, Year_Quantity = "Weight (lbs)", Year_Cost = "Revenue ($)"),
           tooltip = paste0(
             "Year: ", Year,
             "<br>Vegetable: ", Vegetable,
@@ -314,9 +315,9 @@ server <- function(input, output)  {
       p <- ggplot(data_long, aes(x = Vegetable, y = Value, fill = Metric, text = tooltip)) +
         geom_bar(stat = "identity", position = position_dodge(width = 0.7), width = 0.6) +
         scale_x_discrete(drop = FALSE) +
-        labs(title = "Harvest by Weight (lbs) and Revenue",
+        labs(title = "Harvest by Weight (lbs) and Revenue ($)",
              x = NULL, y = "Value", fill = "Metric") +
-        scale_fill_manual(values = c("Revenue" = "#b63679",
+        scale_fill_manual(values = c("Revenue ($)" = "#b63679",
                                      "Weight (lbs)" = "#f98e09")) +
         theme_minimal() +
         theme(
@@ -362,7 +363,7 @@ server <- function(input, output)  {
       p3 <- ggplot(data_to_plot, aes(x = !!sym(x_var), y = Cost, fill = Vegetable, text = tooltip)) +
         geom_bar(stat = "identity") +
         scale_x_discrete(drop = FALSE) +
-        labs(title = "Harvest by Weight (lbs) and Revenue", y = "Revenue ($)", x = NULL) +
+        labs(title = "Harvest by Weight (lbs) and Revenue ($)", y = "Revenue ($)", x = NULL) +
         scale_fill_viridis_d(option = "D") +
         theme_minimal() +
         theme(
