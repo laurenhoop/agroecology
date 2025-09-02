@@ -5,7 +5,7 @@ account: hooperr
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 15234465
-bundleId: 10807087
+bundleId: 10821777
 url: https://hooperr.shinyapps.io/CropHarvest/
 version: 1
 asMultiple: FALSE

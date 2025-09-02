@@ -68,7 +68,7 @@ ui <- page_fillable(
   
   # Application title
   tags$div(
-    "Crop Harvest App",
+    "Agroecology Education Farm Harvest App",
     style = "text-align: center; background-color: #95c2de; color: black;
             padding: 10px 0; border-radius: 5px; font-weight: bold; font-size: 3rem;
             margin-bottom: 20px;"
@@ -86,7 +86,7 @@ ui <- page_fillable(
   # Adds a "class" of a colored background that can be added to each card/user input below
   tags$style(HTML("
   .colored-background-card {
-    background-color: #d1e5f0;  /* light sage green background */
+    background-color: #d1e5f0; 
     border-radius: 8px;
     color: black;
     padding: 15px;
@@ -170,7 +170,7 @@ ui <- page_fillable(
          fill = TRUE,
          plotlyOutput("plot", height = "100%")) 
   ),
-  tags$footer("Created by Lauren Hooper with the Agroecology Farm Lab at NC State University 2025")
+  tags$footer("Created by Lauren Hooper with the Agroecology Lab at NC State University 2025")
 )
 
 #============== Define server logic required to draw a histogram ==============
@@ -327,19 +327,7 @@ server <- function(input, output)  {
           axis.title.y = element_text(size = 15),
         ) 
       
-      p <- ggplotly(p, tooltip = "text") |>
-        layout(
-          legend = list(
-            orientation = "h",         # horizontal legend
-            x = 0.5, xanchor = "center",
-            y = -0.2,                  # below the plot area
-            tracegroupgap = 3, 
-            font = list(size = 16),    # legend item font size
-            title = list(              # legend title styling
-              font = list(size = 18))
-          ),
-          margin = list(b = 120),
-          xaxis = list(automargin = TRUE))
+      p <- ggplotly(p, tooltip = "text")
       return(p)
     }
     
@@ -372,21 +360,7 @@ server <- function(input, output)  {
           axis.text.y = element_text(size = 12),
           axis.title.y = element_text(size = 15))
       
-      p2_ly <- ggplotly(p2, tooltip = "text") |>
-        layout(
-          legend = list(
-            orientation = "h",         # horizontal legend
-            x = 0.5, xanchor = "center",
-            y = -0.2,                  # below the plot area
-            tracegroupgap = 3, 
-            font = list(size = 16),    # legend item font size
-            title = list(              # legend title styling
-              font = list(size = 18)
-            )
-          ),
-          margin = list(b = 90),        # make room for the bottom legend
-          xaxis = list(automargin = TRUE)
-          )
+      p2_ly <- ggplotly(p2, tooltip = "text")
       
       p3_ly <- ggplotly(p3, tooltip = "text") |>
         style(showlegend = FALSE)
@@ -409,22 +383,7 @@ server <- function(input, output)  {
           axis.title.y = element_text(size = 15))
       
       
-      p4 <- ggplotly(p4, tooltip = "text") |>
-        layout(
-          legend = list(
-            orientation = "h",         # horizontal legend
-            x = 0.5, xanchor = "center",
-            y = -0.2,                  # below the plot area
-            tracegroupgap = 3, 
-            font = list(size = 16),    # legend item font size
-            title = list(              # legend title styling
-              font = list(size = 18)
-            )
-          ),
-          margin = list(b = 150),        # make room for the bottom legend
-          xaxis = list(automargin = TRUE)
-          )
-      
+      p4 <- ggplotly(p4, tooltip = "text") 
       return(p4)
     }
   })}
