@@ -19,7 +19,7 @@ library(viridis)
 
 # ===== loading Google sheet =====
 gs4_deauth()
-Master_sheet <- read_sheet("https://docs.google.com/spreadsheets/d/1st3bYMIaT2TEjFxW_pe2pP1_yltTycQM0Si1yT2bcyo/edit?usp=sharing")
+Master_sheet <- read_sheet("https://docs.google.com/spreadsheets/d/1vStnvqIuPGPnEaaa7VYeKhDIbRrbnlKBpGChGCo1jAE/edit?usp=sharing")
 
 # ===== cleaning data =====
 Master_sheet_clean <- Master_sheet |>
@@ -149,7 +149,7 @@ ui <- page_fillable(
          # creating text that will be displayed in help icon
          bsTooltip(
            "unit_help",
-           "Revenue is calculated using average US unit prices found on the following websites: ",
+           "Revenue is calculated using average US unit prices found on the following websites: https://www.indexmundi.com/agricultural-prices/product/squash, https://www.foodcoop.com/produce/",
            placement = "right",
            trigger = "hover"
          )
@@ -205,7 +205,7 @@ server <- function(input, output)  {
     crops <- sort(unique(filtered$Vegetable))
     
     pickerInput("crop", 
-                tags$div("Choose Crop:",  style = "font-size: 18px; font-weight: bold;"),
+                tags$div("Choose Crop",  style = "font-size: 18px; font-weight: bold;"),
                 choices = crops,
                 selected = crops[1],
                 multiple = TRUE,
